@@ -12,7 +12,7 @@ DEFAULT_TEMPLATE_DIR = REPO_ROOT / "templates"
 
 # Default model per LLM provider.
 PROVIDER_DEFAULT_MODELS = {
-    "gemini": "gemini-2.0-flash",
+    "gemini": "gemini-2.5-flash",
     "groq": "llama-3.3-70b-versatile",
     "anthropic": "claude-opus-4-8",
 }

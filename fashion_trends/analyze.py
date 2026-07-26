@@ -351,12 +351,17 @@ _NAMED_AESTHETICS: tuple[str, ...] = (
 )
 
 
-def _fallback_analysis(articles: list[Article]) -> EditionAnalysis:
-    """No LLM key: group by named aesthetic keyword, explicitly unverified.
+def _fallback_analysis(
+    articles: list[Article], *, provider: str = "", failure_note: str = ""
+) -> EditionAnalysis:
+    """Grouping-only fallback, explicitly unverified.
 
-    This skips the actual criteria (silhouette, cultural context, etc.) since
-    those require real analysis. Each group is clearly marked as an
-    unverified raw-signal cluster, not a full trend dossier.
+    Used both when no LLM key is configured, and when a configured provider's
+    call fails (bad/expired key, rate limit, outage, etc.) — the two cases get
+    different, honest intro text so the edition never implies "no key" when a
+    key was actually present. This skips the actual criteria (silhouette,
+    cultural context, etc.) since those require real analysis. Each group is
+    clearly marked as an unverified raw-signal cluster, not a full dossier.
     """
     groups: dict[str, list[int]] = {}
     other: list[int] = []
@@ -374,11 +379,20 @@ def _fallback_analysis(articles: list[Article]) -> EditionAnalysis:
     if other:
         trends.append(_unverified_dossier("Niesklasyfikowane sygnały trendowe", other, articles))
 
-    intro = (
-        f"Brak skonfigurowanego klucza LLM (GEMINI_API_KEY / GROQ_API_KEY / "
-        f"ANTHROPIC_API_KEY) — poniżej surowe pogrupowanie {len(articles)} "
-        "artykułów sygnałowych, BEZ pełnej weryfikacji kryteriów trendu."
-    )
+    if provider:
+        intro = (
+            f"Klucz API dla dostawcy '{provider}' jest skonfigurowany, ale wywołanie "
+            f"nie powiodło się ({failure_note}) — poniżej surowe pogrupowanie "
+            f"{len(articles)} artykułów sygnałowych, BEZ pełnej weryfikacji kryteriów "
+            "trendu. Sprawdź logi uruchomienia w zakładce Actions na GitHubie po "
+            "szczegóły i spróbuj ponownie."
+        )
+    else:
+        intro = (
+            f"Brak skonfigurowanego klucza LLM (GEMINI_API_KEY / GROQ_API_KEY / "
+            f"ANTHROPIC_API_KEY) — poniżej surowe pogrupowanie {len(articles)} "
+            "artykułów sygnałowych, BEZ pełnej weryfikacji kryteriów trendu."
+        )
     return EditionAnalysis(intro=intro, trends=trends)
 
 
@@ -410,6 +424,30 @@ def _unverified_dossier(name: str, idxs: list[int], articles: list[Article]) -> 
     )
 
 
+def _safe_failure_note(exc: Exception) -> str:
+    """Classify an exception into a short, secret-free description.
+
+    Never returns str(exc) directly: for HTTP errors that includes the full
+    request URL, which for some providers contains the API key as a query
+    parameter — safe to log (GitHub Actions masks secrets in logs) but not
+    safe to put in an email body.
+    """
+    if isinstance(exc, requests.HTTPError) and exc.response is not None:
+        status = exc.response.status_code
+        if status == 429:
+            return "429 – przekroczony limit zapytań (rate limit) u dostawcy"
+        if status in (401, 403):
+            return f"{status} – błąd autoryzacji klucza API"
+        if status == 404:
+            return "404 – nie znaleziono modelu (sprawdź FASHION_MODEL)"
+        return f"błąd HTTP {status} od dostawcy"
+    if isinstance(exc, requests.RequestException):
+        return "błąd sieci przy wywołaniu dostawcy"
+    if isinstance(exc, (json.JSONDecodeError, KeyError, IndexError)):
+        return "nieoczekiwana odpowiedź dostawcy (nie udało się odczytać JSON)"
+    return "nieoczekiwany błąd"
+
+
 def analyze(articles: list[Article], settings: Settings) -> EditionAnalysis:
     """Produce an EditionAnalysis using the configured provider."""
     if not articles:
@@ -432,10 +470,15 @@ def analyze(articles: list[Article], settings: Settings) -> EditionAnalysis:
         else:  # pragma: no cover - guarded by has_analyzer
             return _fallback_analysis(articles)
     except Exception as exc:
+        # Log the full exception (safe: GitHub Actions masks any registered
+        # secret value in log output). Never put str(exc) into the email
+        # itself — for HTTP errors it can include the request URL with the
+        # API key as a query parameter, which is NOT masked in email content.
         logger.error(
             "Trend analysis via %s failed (%s) — falling back.", settings.provider, exc
         )
-        return _fallback_analysis(articles)
+        failure_note = _safe_failure_note(exc)
+        return _fallback_analysis(articles, provider=settings.provider, failure_note=failure_note)
 
     analysis = _payload_to_analysis(data, len(articles), settings.max_trends)
     logger.info(

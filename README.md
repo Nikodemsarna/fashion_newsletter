@@ -109,7 +109,7 @@ The provider is auto-detected from whichever key you set:
 
 - **Google Gemini** (recommended, free): grab a key — no credit card — at
   [aistudio.google.com/apikey](https://aistudio.google.com/apikey) and set
-  `GEMINI_API_KEY`. Default model `gemini-2.0-flash`.
+  `GEMINI_API_KEY`. Default model `gemini-2.5-flash`.
 - **Groq** (free, fast): key at [console.groq.com/keys](https://console.groq.com/keys),
   set `GROQ_API_KEY`. Default model `llama-3.3-70b-versatile`.
 - **Anthropic / Claude** (paid): set `ANTHROPIC_API_KEY` and
