@@ -1,0 +1,71 @@
+{#- Fashion Trend Watch email template. Inline styles for broad email-client support. -#}
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fashion Trend Watch — {{ date_label }}</title>
+</head>
+<body style="margin:0; padding:0; background-color:#0b1020; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; color:#1a1a2e;">
+  <div style="display:none; max-height:0; overflow:hidden;">
+    {{ count }} zweryfikowanych zjawisk trendowych w modzie — dossier: cechy, dowody, etap rozwoju, horyzont.
+  </div>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#0b1020; padding:24px 12px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="640" cellpadding="0" cellspacing="0" style="max-width:640px; width:100%; background-color:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 4px 24px rgba(0,0,0,0.25);">
+
+          <!-- Header -->
+          <tr>
+            <td style="background:linear-gradient(135deg,#3b1f4b 0%,#c2185b 100%); padding:28px 32px;">
+              <div style="font-size:13px; letter-spacing:2px; text-transform:uppercase; color:#f4c9de; font-weight:600;">Codzienny przegląd trendów w modzie</div>
+              <div style="font-size:26px; font-weight:700; color:#ffffff; margin-top:4px;">👗 Fashion Trend Watch</div>
+              <div style="font-size:14px; color:#f9dcea; margin-top:6px;">{{ date_label }}</div>
+            </td>
+          </tr>
+
+          {% if intro %}
+          <tr>
+            <td style="padding:24px 32px 8px 32px;">
+              <p style="margin:0; font-size:16px; line-height:1.6; color:#33384d;">{{ intro }}</p>
+            </td>
+          </tr>
+          {% endif %}
+
+          {% if trends %}
+          <tr>
+            <td style="padding:20px 32px 4px 32px;">
+              <div style="font-size:13px; letter-spacing:1.5px; text-transform:uppercase; color:#c2185b; font-weight:700; border-bottom:2px solid #f9e3ec; padding-bottom:8px;">Zjawiska trendowe — dossier weryfikacyjne</div>
+            </td>
+          </tr>
+          {% for t in trends %}
+          <tr>
+            <td style="padding:16px 32px 0 32px;">
+              {% include 'trend.html.j2' %}
+            </td>
+          </tr>
+          {% endfor %}
+          {% else %}
+          <tr>
+            <td style="padding:24px 32px;">
+              <p style="margin:0; font-size:14px; color:#5b6478;">Brak zweryfikowanych zjawisk trendowych w tym wydaniu.</p>
+            </td>
+          </tr>
+          {% endif %}
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding:32px; text-align:center; color:#8a91a3; font-size:12px; line-height:1.6;">
+              <div style="border-top:1px solid #eceef3; padding-top:20px;">
+                Zagregowane z prasy modowej · każde zjawisko zweryfikowane wg stałego zestawu 11 kryteriów<br>
+                Analiza generowana przez LLM — linki prowadzą do źródeł. Sprawdzaj "Dowody przeczące" i poziom pewności przed decyzją.
+              </div>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

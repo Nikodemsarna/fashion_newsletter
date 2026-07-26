@@ -1,0 +1,89 @@
+name: Daily Fashion Trend Newsletter
+
+# Runs every morning and emails the fashion-trend-verification digest.
+# Also runnable on demand (workflow_dispatch), with an optional dry run.
+on:
+  schedule:
+    # 07:00 UTC daily. Adjust to taste (cron is in UTC).
+    - cron: "0 7 * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Render only, do not send"
+        type: boolean
+        default: false
+      test_email:
+        description: "Send a TEST email now (uses sample content if none are live)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: daily-newsletter
+  cancel-in-progress: false
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt pytest
+          # Only needed if you use the Anthropic provider.
+          if [ -n "${{ secrets.ANTHROPIC_API_KEY }}" ]; then
+            pip install "anthropic>=0.49.0"
+          fi
+
+      - name: Run tests
+        run: python -m pytest -q
+
+      - name: Build and send newsletter
+        env:
+          # Trend analysis — set ONE of these (Gemini and Groq are free).
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          FASHION_PROVIDER: ${{ vars.FASHION_PROVIDER }}
+          # Delivery — set EITHER the Resend secret OR the SMTP_* secrets.
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          # Optional overrides (otherwise defaults from the code apply).
+          NEWSLETTER_TO: ${{ secrets.NEWSLETTER_TO }}
+          NEWSLETTER_FROM: ${{ secrets.NEWSLETTER_FROM }}
+          FASHION_MODEL: ${{ vars.FASHION_MODEL }}
+          FASHION_EFFORT: ${{ vars.FASHION_EFFORT }}
+          FASHION_WINDOW_HOURS: ${{ vars.FASHION_WINDOW_HOURS }}
+          FASHION_MAX_ARTICLES: ${{ vars.FASHION_MAX_ARTICLES }}
+          FASHION_MAX_TRENDS: ${{ vars.FASHION_MAX_TRENDS }}
+        run: |
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            python -m fashion_trends --dry-run --output output/edition.html
+          elif [ "${{ github.event.inputs.test_email }}" = "true" ]; then
+            python -m fashion_trends --test --output output/edition.html
+          else
+            python -m fashion_trends --output output/edition.html
+          fi
+
+      - name: Upload rendered edition
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: newsletter-edition
+          path: output/edition.html
+          if-no-files-found: ignore
+          retention-days: 14

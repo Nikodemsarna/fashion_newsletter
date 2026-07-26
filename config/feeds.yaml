@@ -1,0 +1,53 @@
+# Fashion Trend Watch — source portals
+#
+# Fashion-press and culture outlets that publish an RSS/Atom feed and cover
+# runway, street style, and the social-platform side of fashion trends. Feeds
+# that fail to load on a given day are logged and skipped, so the newsletter
+# degrades gracefully.
+#
+# Add or remove sources freely — `name` is shown as the story's source label.
+
+feeds:
+  # --- Dedicated fashion-industry / fashion-business press ---
+  - name: Vogue
+    url: https://www.vogue.com/feed/rss
+  - name: Vogue Business
+    url: https://www.voguebusiness.com/feed/rss
+  - name: WWD
+    url: https://wwd.com/feed/
+  - name: Business of Fashion
+    url: https://www.businessoffashion.com/feed
+  - name: Fashionista
+    url: https://fashionista.com/.rss/full/
+  - name: Glossy
+    url: https://www.glossy.co/feed/
+
+  # --- Style / culture outlets with a strong trend-spotting angle ---
+  - name: Highsnobiety
+    url: https://www.highsnobiety.com/feed/
+  - name: Hypebeast
+    url: https://hypebeast.com/feed
+  - name: i-D
+    url: https://i-d.vice.com/en/rss
+  - name: Dazed — Fashion
+    url: https://www.dazeddigital.com/rss/fashion
+  - name: Nylon
+    url: https://www.nylon.com/feed
+  - name: The Cut
+    url: https://www.thecut.com/rss.xml
+  - name: Elle
+    url: https://www.elle.com/rss/all.xml/
+  - name: Harper's Bazaar
+    url: https://www.harpersbazaar.com/rss/all.xml/
+  - name: W Magazine
+    url: https://www.wmagazine.com/feed/rss
+  - name: CR Fashion Book
+    url: https://www.crfashionbook.com/feed
+  - name: Complex — Style
+    url: https://www.complex.com/style/rss.xml
+
+  # --- General culture/entertainment outlets with strong fashion desks ---
+  - name: Refinery29
+    url: https://www.refinery29.com/en-us/fashion/rss.xml
+  - name: PAPER Magazine
+    url: https://www.papermag.com/rss
