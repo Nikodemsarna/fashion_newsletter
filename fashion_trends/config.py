@@ -12,7 +12,10 @@ DEFAULT_TEMPLATE_DIR = REPO_ROOT / "templates"
 
 # Default model per LLM provider.
 PROVIDER_DEFAULT_MODELS = {
-    "gemini": "gemini-2.5-flash",
+    # "-latest" is a Google-maintained alias that always points at the current
+    # GA Flash model, hot-swapped by Google on each release — this avoids
+    # having to chase model retirements/renames by hand every few months.
+    "gemini": "gemini-flash-latest",
     "groq": "llama-3.3-70b-versatile",
     "anthropic": "claude-opus-4-8",
 }

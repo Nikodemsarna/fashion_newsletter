@@ -27,7 +27,7 @@ def test_gemini_autodetected(monkeypatch):
     s = Settings.from_env()
     assert s.provider == "gemini"
     assert s.has_analyzer is True
-    assert s.resolved_model == "gemini-2.5-flash"
+    assert s.resolved_model == "gemini-flash-latest"
     assert s.api_key == "x"
 
 
