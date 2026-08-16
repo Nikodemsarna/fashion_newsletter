@@ -14,7 +14,7 @@ from .newsletter import run
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="fashion_trends",
-        description="Build and email the daily fashion-trend-verification newsletter.",
+        description="Build and email the daily marketing-trend-verification newsletter.",
     )
     parser.add_argument(
         "--dry-run",

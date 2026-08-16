@@ -1,53 +1,48 @@
-# Fashion Trend Watch — source portals
+# Marketing Signals — source portals
 #
-# Fashion-press and culture outlets that publish an RSS/Atom feed and cover
-# runway, street style, and the social-platform side of fashion trends. Feeds
-# that fail to load on a given day are logged and skipped, so the newsletter
-# degrades gracefully.
+# Marketing- and advertising-trade press covering campaigns, platforms, brand
+# strategy, and market data. Feeds that fail to load on a given day are
+# logged and skipped, so the newsletter degrades gracefully.
 #
 # Add or remove sources freely — `name` is shown as the story's source label.
 
 feeds:
-  # --- Dedicated fashion-industry / fashion-business press ---
-  - name: Vogue
-    url: https://www.vogue.com/feed/rss
-  - name: Vogue Business
-    url: https://www.voguebusiness.com/feed/rss
-  - name: WWD
-    url: https://wwd.com/feed/
-  - name: Business of Fashion
-    url: https://www.businessoffashion.com/feed
-  - name: Fashionista
-    url: https://fashionista.com/.rss/full/
-  - name: Glossy
-    url: https://www.glossy.co/feed/
+  # --- Dedicated marketing/advertising trade press ---
+  - name: Marketing Week
+    url: https://www.marketingweek.com/feed/
+  - name: Adweek
+    url: https://www.adweek.com/feed/
+  - name: The Drum
+    url: https://www.thedrum.com/rss
+  - name: Digiday
+    url: https://digiday.com/feed/
+  - name: Marketing Dive
+    url: https://www.marketingdive.com/feeds/news/
+  - name: AdAge
+    url: https://adage.com/feed
+  - name: Campaign
+    url: https://www.campaignlive.co.uk/rss
+  - name: PR Week
+    url: https://www.prweek.com/rss
 
-  # --- Style / culture outlets with a strong trend-spotting angle ---
-  - name: Highsnobiety
-    url: https://www.highsnobiety.com/feed/
-  - name: Hypebeast
-    url: https://hypebeast.com/feed
-  - name: i-D
-    url: https://i-d.vice.com/en/rss
-  - name: Dazed — Fashion
-    url: https://www.dazeddigital.com/rss/fashion
-  - name: Nylon
-    url: https://www.nylon.com/feed
-  - name: The Cut
-    url: https://www.thecut.com/rss.xml
-  - name: Elle
-    url: https://www.elle.com/rss/all.xml/
-  - name: Harper's Bazaar
-    url: https://www.harpersbazaar.com/rss/all.xml/
-  - name: W Magazine
-    url: https://www.wmagazine.com/feed/rss
-  - name: CR Fashion Book
-    url: https://www.crfashionbook.com/feed
-  - name: Complex — Style
-    url: https://www.complex.com/style/rss.xml
+  # --- Martech / adtech / performance angle ---
+  - name: MarTech
+    url: https://martech.org/feed/
+  - name: Search Engine Land
+    url: https://searchengineland.com/feed
+  - name: MarketingProfs
+    url: https://www.marketingprofs.com/rss/marketingprofs.xml
+  - name: HubSpot Marketing Blog
+    url: https://blog.hubspot.com/marketing/rss.xml
+  - name: Social Media Today
+    url: https://www.socialmediatoday.com/feeds/news/
+  - name: Retail Dive
+    url: https://www.retaildive.com/feeds/news/
 
-  # --- General culture/entertainment outlets with strong fashion desks ---
-  - name: Refinery29
-    url: https://www.refinery29.com/en-us/fashion/rss.xml
-  - name: PAPER Magazine
-    url: https://www.papermag.com/rss
+  # --- Creative / culture-adjacent outlets ---
+  - name: Creative Review
+    url: https://www.creativereview.co.uk/feed/
+  - name: LBBonline
+    url: https://www.lbbonline.com/feed
+  - name: Branding Magazine
+    url: https://www.brandingmag.com/feed/

@@ -17,7 +17,7 @@ from .sources import Source
 logger = logging.getLogger(__name__)
 
 USER_AGENT = (
-    "Mozilla/5.0 (compatible; FashionTrendWatchBot/1.0; "
+    "Mozilla/5.0 (compatible; MarketingSignalsBot/1.0; "
     "+https://github.com/Nikodemsarna/fashion_newsletter)"
 )
 REQUEST_TIMEOUT = 20  # seconds

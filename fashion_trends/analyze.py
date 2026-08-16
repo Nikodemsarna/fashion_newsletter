@@ -1,22 +1,23 @@
-"""Identify fashion-trend phenomena and build a verification dossier for each.
+"""Identify marketing-trend phenomena and build a verification dossier for each.
 
 Unlike a plain "summarize this article" pass, this stage asks the LLM to look
-across the day's filtered fashion-press stories, cluster them into distinct
+across the day's filtered marketing-press stories, cluster them into distinct
 trend PHENOMENA (a trend rarely lives in a single article), and for each one
 answer a fixed set of trend-verification criteria:
 
   1. working_name           - nazwa robocza zjawiska
-  2. features                - widoczne cechy: sylwetka, proporcje, kolor,
-                                materiał, detal, sposób stylizacji
+  2. features                - widoczne cechy: mechanika/format, kanał, ton,
+                                grupa docelowa, insight kreatywny, sygnał
+                                mierzalności
   3. earliest_occurrences    - najwcześniejsze znane wystąpienia
-  4. signal_carriers         - projektanci, celebryci, subkultury, platformy
+  4. signal_carriers         - marki, agencje, głosy branżowe, platformy
   5. cultural_context        - kontekst kulturowy/polityczny/ekonomiczny
   6. stage                   - sygnał -> wschodzący -> wzrost -> mainstream
                                 -> nasycenie -> schyłek
   7. confirming_evidence     - dowody potwierdzające (linked back to articles)
   8. contradicting_evidence  - dowody przeczące
   9. predicted_horizon       - przewidywany horyzont
-  10. marketing_implication  - możliwa konsekwencja marketingowa
+  10. business_implication   - możliwa konsekwencja biznesowa
   11. confidence             - poziom pewności 1-5
 
 Supported providers (auto-detected from whichever API key is set, or forced
@@ -29,6 +30,7 @@ from __future__ import annotations
 import json
 import logging
 import re
+import time
 from dataclasses import dataclass, field
 
 import requests
@@ -40,6 +42,14 @@ logger = logging.getLogger(__name__)
 
 _TIMEOUT = 120
 _MAX_TOKENS = 16000
+
+# Transient-failure retry policy for provider calls: a 503 (overloaded model,
+# very common on Gemini's free tier), a 429, or a network hiccup usually
+# clears up within seconds, so it's worth a couple of retries before giving
+# up and falling back to the unverified grouping.
+_RETRYABLE_STATUSES = {429, 500, 502, 503, 504}
+_MAX_ATTEMPTS = 3
+_RETRY_DELAY_SECONDS = 5
 
 STAGES: tuple[str, ...] = (
     "signal",
@@ -60,30 +70,32 @@ STAGE_LABELS_PL = {
 }
 
 _SYSTEM_PROMPT = (
-    "Jesteś starszym analitykiem trendów w modzie i krytykiem kultury wizualnej, "
-    "piszącym wewnętrzny newsletter trend-spotting dla profesjonalnego odbiorcy "
-    "(dział projektowy/marketingowy marki modowej). Twoim zadaniem NIE jest "
+    "Jesteś starszym analitykiem trendów marketingowych i krytykiem komunikacji "
+    "marek, piszącym wewnętrzny newsletter trend-spotting dla profesjonalnego "
+    "odbiorcy (dział marketingu/strategii marki). Twoim zadaniem NIE jest "
     "streszczanie artykułów, tylko wykrywanie leżących pod nimi ZJAWISK "
     "(fenomenów trendowych) i rygorystyczna weryfikacja każdego z nich według "
     "stałego zestawu kryteriów.\n\n"
     "Zasady pracy:\n"
     "- Jeden trend rzadko mieści się w jednym artykule — łącz powiązane "
     "historie w jedno zjawisko i pomijaj artykuły, które nie wskazują na żaden "
-    "odrębny trend (np. czysto biznesowe newsy bez sygnału stylistycznego).\n"
-    "- Możesz i powinieneś korzystać z własnej wiedzy o historii mody, popkulturze "
-    "i mediach społecznościowych, aby uzupełnić kryteria, których dostarczone "
-    "artykuły nie pokrywają wprost (np. najwcześniejsze wystąpienia, kontekst "
-    "kulturowy) — ale nigdy nie zmyślaj fałszywej precyzji (dokładnych dat, "
-    "nazwisk, liczb), której nie jesteś pewien. Jeśli nie masz pewności, podaj "
-    "najlepsze przybliżenie i obniż poziom pewności zamiast fabrykować szczegóły.\n"
+    "odrębny trend (np. czysto biznesowe newsy bez sygnału strategicznego lub "
+    "kreatywnego).\n"
+    "- Możesz i powinieneś korzystać z własnej wiedzy o historii marketingu, "
+    "popkulturze i mediach społecznościowych, aby uzupełnić kryteria, których "
+    "dostarczone artykuły nie pokrywają wprost (np. najwcześniejsze wystąpienia, "
+    "kontekst kulturowy) — ale nigdy nie zmyślaj fałszywej precyzji (dokładnych "
+    "dat, nazwisk, liczb), której nie jesteś pewien. Jeśli nie masz pewności, "
+    "podaj najlepsze przybliżenie i obniż poziom pewności zamiast fabrykować "
+    "szczegóły.\n"
     "- 'Dowody potwierdzające' muszą realnie wspierać istnienie i etap rozwoju "
     "trendu; jeśli powołujesz się na dostarczony artykuł, podaj jego indeks w "
     "source_indices. Możesz też podać dowód spoza dostarczonych artykułów "
     "(source_indices: []), jeśli to wiedza ogólna.\n"
     "- 'Dowody przeczące' są obowiązkowym polem krytycznym — aktywnie szukaj "
-    "kontrargumentów (np. trend ograniczony do jednej bańki na TikToku, brak "
-    "przełożenia na sprzedaż, sprzeczne sygnały od innych domów mody, oznaki "
-    "przesytu). Napisz 'brak istotnych dowodów przeczących' tylko jeśli "
+    "kontrargumentów (np. trend ograniczony do jednej bańki na jednej platformie, "
+    "brak przełożenia na realne budżety, sprzeczne sygnały od innych marek, "
+    "oznaki przesytu). Napisz 'brak istotnych dowodów przeczących' tylko jeśli "
     "naprawdę ich nie znajdujesz.\n"
     "- Poziom pewności (1-5) odzwierciedla siłę i niezależność dowodów: "
     "5 = potwierdzone wieloma niezależnymi, mocnymi sygnałami; "
@@ -99,24 +111,24 @@ _JSON_SHAPE = (
     '  "trends": [\n'
     "    {\n"
     '      "working_name": "nazwa robocza zjawiska",\n'
-    '      "silhouette": "sylwetka",\n'
-    '      "proportions": "proporcje",\n'
-    '      "color": "kolor",\n'
-    '      "material": "materiał",\n'
-    '      "detail": "detal",\n'
-    '      "styling": "sposób stylizacji",\n'
+    '      "mechanic": "mechanika / format (np. UGC, seria wideo, partnerstwo z twórcą)",\n'
+    '      "channel": "główny kanał dystrybucji",\n'
+    '      "tone": "ton komunikacji",\n'
+    '      "target_audience": "grupa docelowa",\n'
+    '      "creative_hook": "insight / haczyk kreatywny",\n'
+    '      "measurement_signal": "sygnał mierzalności / wskaźnik sukcesu",\n'
     '      "earliest_occurrences": "najwcześniejsze znane wystąpienia",\n'
-    '      "designers": ["projektanci/marki niosące sygnał"],\n'
-    '      "celebrities": ["celebryci/influencerzy niosący sygnał"],\n'
-    '      "subcultures": ["subkultury/społeczności niosące sygnał"],\n'
-    '      "platforms": ["platformy niosące sygnał, np. TikTok, Instagram, Depop"],\n'
+    '      "brands": ["marki/kampanie niosące sygnał"],\n'
+    '      "agencies": ["agencje/studia kreatywne niosące sygnał"],\n'
+    '      "voices": ["krytycy/komentatorzy/redakcje niosący sygnał"],\n'
+    '      "platforms": ["platformy niosące sygnał, np. TikTok, LinkedIn, retail media"],\n'
     '      "cultural_context": "kontekst kulturowy, polityczny lub ekonomiczny",\n'
     '      "stage": "signal|emerging|growth|mainstream|saturation|decline",\n'
     '      "confirming_evidence": [{"text": "dowód potwierdzający", '
     '"source_indices": [<int z listy ARTYKUŁY>]}],\n'
     '      "contradicting_evidence": "dowody przeczące (obowiązkowe)",\n'
     '      "predicted_horizon": "przewidywany horyzont czasowy",\n'
-    '      "marketing_implication": "możliwa konsekwencja marketingowa",\n'
+    '      "business_implication": "możliwa konsekwencja biznesowa",\n'
     '      "confidence": <int 1-5>\n'
     "    }\n"
     "  ]\n"
@@ -134,16 +146,16 @@ _OUTPUT_SCHEMA = {
                 "type": "object",
                 "properties": {
                     "working_name": {"type": "string"},
-                    "silhouette": {"type": "string"},
-                    "proportions": {"type": "string"},
-                    "color": {"type": "string"},
-                    "material": {"type": "string"},
-                    "detail": {"type": "string"},
-                    "styling": {"type": "string"},
+                    "mechanic": {"type": "string"},
+                    "channel": {"type": "string"},
+                    "tone": {"type": "string"},
+                    "target_audience": {"type": "string"},
+                    "creative_hook": {"type": "string"},
+                    "measurement_signal": {"type": "string"},
                     "earliest_occurrences": {"type": "string"},
-                    "designers": {"type": "array", "items": {"type": "string"}},
-                    "celebrities": {"type": "array", "items": {"type": "string"}},
-                    "subcultures": {"type": "array", "items": {"type": "string"}},
+                    "brands": {"type": "array", "items": {"type": "string"}},
+                    "agencies": {"type": "array", "items": {"type": "string"}},
+                    "voices": {"type": "array", "items": {"type": "string"}},
                     "platforms": {"type": "array", "items": {"type": "string"}},
                     "cultural_context": {"type": "string"},
                     "stage": {"type": "string", "enum": list(STAGES)},
@@ -164,28 +176,28 @@ _OUTPUT_SCHEMA = {
                     },
                     "contradicting_evidence": {"type": "string"},
                     "predicted_horizon": {"type": "string"},
-                    "marketing_implication": {"type": "string"},
+                    "business_implication": {"type": "string"},
                     "confidence": {"type": "integer"},
                 },
                 "required": [
                     "working_name",
-                    "silhouette",
-                    "proportions",
-                    "color",
-                    "material",
-                    "detail",
-                    "styling",
+                    "mechanic",
+                    "channel",
+                    "tone",
+                    "target_audience",
+                    "creative_hook",
+                    "measurement_signal",
                     "earliest_occurrences",
-                    "designers",
-                    "celebrities",
-                    "subcultures",
+                    "brands",
+                    "agencies",
+                    "voices",
                     "platforms",
                     "cultural_context",
                     "stage",
                     "confirming_evidence",
                     "contradicting_evidence",
                     "predicted_horizon",
-                    "marketing_implication",
+                    "business_implication",
                     "confidence",
                 ],
                 "additionalProperties": False,
@@ -206,23 +218,23 @@ class Evidence:
 @dataclass
 class TrendDossier:
     working_name: str
-    silhouette: str
-    proportions: str
-    color: str
-    material: str
-    detail: str
-    styling: str
+    mechanic: str
+    channel: str
+    tone: str
+    target_audience: str
+    creative_hook: str
+    measurement_signal: str
     earliest_occurrences: str
-    designers: list[str]
-    celebrities: list[str]
-    subcultures: list[str]
+    brands: list[str]
+    agencies: list[str]
+    voices: list[str]
     platforms: list[str]
     cultural_context: str
     stage: str
     confirming_evidence: list[Evidence]
     contradicting_evidence: str
     predicted_horizon: str
-    marketing_implication: str
+    business_implication: str
     confidence: int
     verified: bool = True  # False for the no-LLM-key fallback
 
@@ -235,9 +247,10 @@ class EditionAnalysis:
 
 def _build_user_prompt(articles: list[Article]) -> str:
     lines = [
-        "Poniżej znajduje się dzisiejsza pula artykułów prasy modowej (po "
-        "filtrze sygnałów trendowych). Zidentyfikuj do 8 odrębnych zjawisk "
-        "trendowych i zweryfikuj każde zgodnie z podanym schematem.",
+        "Poniżej znajduje się dzisiejsza pula artykułów prasy marketingowej i "
+        "reklamowej (po filtrze sygnałów trendowych). Zidentyfikuj do 8 "
+        "odrębnych zjawisk trendowych i zweryfikuj każde zgodnie z podanym "
+        "schematem.",
         "",
         _JSON_SHAPE,
         "",
@@ -311,23 +324,23 @@ def _payload_to_analysis(data: dict, n_articles: int, max_trends: int) -> Editio
         trends.append(
             TrendDossier(
                 working_name=working_name,
-                silhouette=str(item.get("silhouette") or "").strip(),
-                proportions=str(item.get("proportions") or "").strip(),
-                color=str(item.get("color") or "").strip(),
-                material=str(item.get("material") or "").strip(),
-                detail=str(item.get("detail") or "").strip(),
-                styling=str(item.get("styling") or "").strip(),
+                mechanic=str(item.get("mechanic") or "").strip(),
+                channel=str(item.get("channel") or "").strip(),
+                tone=str(item.get("tone") or "").strip(),
+                target_audience=str(item.get("target_audience") or "").strip(),
+                creative_hook=str(item.get("creative_hook") or "").strip(),
+                measurement_signal=str(item.get("measurement_signal") or "").strip(),
                 earliest_occurrences=str(item.get("earliest_occurrences") or "").strip(),
-                designers=_clean_str_list(item.get("designers")),
-                celebrities=_clean_str_list(item.get("celebrities")),
-                subcultures=_clean_str_list(item.get("subcultures")),
+                brands=_clean_str_list(item.get("brands")),
+                agencies=_clean_str_list(item.get("agencies")),
+                voices=_clean_str_list(item.get("voices")),
                 platforms=_clean_str_list(item.get("platforms")),
                 cultural_context=str(item.get("cultural_context") or "").strip(),
                 stage=stage,
                 confirming_evidence=evidence,
                 contradicting_evidence=str(item.get("contradicting_evidence") or "").strip(),
                 predicted_horizon=str(item.get("predicted_horizon") or "").strip(),
-                marketing_implication=str(item.get("marketing_implication") or "").strip(),
+                business_implication=str(item.get("business_implication") or "").strip(),
                 confidence=confidence,
                 verified=True,
             )
@@ -336,18 +349,19 @@ def _payload_to_analysis(data: dict, n_articles: int, max_trends: int) -> Editio
     return EditionAnalysis(intro=(data.get("intro") or "").strip(), trends=trends)
 
 
-_NAMED_AESTHETICS: tuple[str, ...] = (
-    "cottagecore",
-    "gorpcore",
-    "balletcore",
-    "normcore",
-    "blokecore",
-    "mob wife",
-    "coastal grandma",
-    "quiet luxury",
-    "old money",
-    "y2k",
-    "dopamine dressing",
+_NAMED_PHENOMENA: tuple[str, ...] = (
+    "brand safety",
+    "de-influencing",
+    "deinfluencing",
+    "retail media",
+    "creator economy",
+    "greenwashing",
+    "brand activism",
+    "attention economy",
+    "dark social",
+    "owned media",
+    "nation branding",
+    "generative ai",
 )
 
 
@@ -359,7 +373,7 @@ def _fallback_analysis(
     Used both when no LLM key is configured, and when a configured provider's
     call fails (bad/expired key, rate limit, outage, etc.) — the two cases get
     different, honest intro text so the edition never implies "no key" when a
-    key was actually present. This skips the actual criteria (silhouette,
+    key was actually present. This skips the actual criteria (mechanic,
     cultural context, etc.) since those require real analysis. Each group is
     clearly marked as an unverified raw-signal cluster, not a full dossier.
     """
@@ -367,7 +381,7 @@ def _fallback_analysis(
     other: list[int] = []
     for i, art in enumerate(articles):
         haystack = f"{art.title}\n{art.summary}".lower()
-        matched = next((name for name in _NAMED_AESTHETICS if name in haystack), None)
+        matched = next((name for name in _NAMED_PHENOMENA if name in haystack), None)
         if matched:
             groups.setdefault(matched, []).append(i)
         else:
@@ -400,16 +414,16 @@ def _unverified_dossier(name: str, idxs: list[int], articles: list[Article]) -> 
     note = "brak analizy LLM — skonfiguruj klucz API, aby uzyskać pełną weryfikację"
     return TrendDossier(
         working_name=name,
-        silhouette=note,
-        proportions=note,
-        color=note,
-        material=note,
-        detail=note,
-        styling=note,
+        mechanic=note,
+        channel=note,
+        tone=note,
+        target_audience=note,
+        creative_hook=note,
+        measurement_signal=note,
         earliest_occurrences=note,
-        designers=[],
-        celebrities=[],
-        subcultures=[],
+        brands=[],
+        agencies=[],
+        voices=[],
         platforms=[a.source for a in articles],
         cultural_context=note,
         stage="signal",
@@ -418,7 +432,7 @@ def _unverified_dossier(name: str, idxs: list[int], articles: list[Article]) -> 
         ],
         contradicting_evidence=note,
         predicted_horizon=note,
-        marketing_implication=note,
+        business_implication=note,
         confidence=1,
         verified=False,
     )
@@ -448,6 +462,46 @@ def _safe_failure_note(exc: Exception) -> str:
     return "nieoczekiwany błąd"
 
 
+def _is_retryable(exc: Exception) -> bool:
+    """Whether `exc` looks like a transient failure worth retrying.
+
+    Covers overloaded/rate-limited providers (Gemini's free-tier 503s in
+    particular are common and usually clear up within seconds) and plain
+    network hiccups. Auth/config errors (401/403/404) are not retried since
+    a second attempt would fail identically.
+    """
+    if isinstance(exc, requests.HTTPError) and exc.response is not None:
+        return exc.response.status_code in _RETRYABLE_STATUSES
+    return isinstance(exc, (requests.ConnectionError, requests.Timeout))
+
+
+def _call_provider(prompt: str, settings: Settings) -> dict:
+    """Call the configured provider, retrying transient failures."""
+    caller = {
+        "gemini": _call_gemini,
+        "groq": _call_groq,
+        "anthropic": _call_anthropic,
+    }[settings.provider]
+
+    for attempt in range(1, _MAX_ATTEMPTS + 1):
+        try:
+            return caller(prompt, settings)
+        except Exception as exc:
+            if attempt < _MAX_ATTEMPTS and _is_retryable(exc):
+                logger.warning(
+                    "Trend analysis via %s failed on attempt %d/%d (%s) — retrying in %ds.",
+                    settings.provider,
+                    attempt,
+                    _MAX_ATTEMPTS,
+                    exc,
+                    _RETRY_DELAY_SECONDS,
+                )
+                time.sleep(_RETRY_DELAY_SECONDS)
+                continue
+            raise
+    raise AssertionError("unreachable")  # pragma: no cover
+
+
 def analyze(articles: list[Article], settings: Settings) -> EditionAnalysis:
     """Produce an EditionAnalysis using the configured provider."""
     if not articles:
@@ -461,14 +515,7 @@ def analyze(articles: list[Article], settings: Settings) -> EditionAnalysis:
 
     prompt = _build_user_prompt(articles)
     try:
-        if settings.provider == "gemini":
-            data = _call_gemini(prompt, settings)
-        elif settings.provider == "groq":
-            data = _call_groq(prompt, settings)
-        elif settings.provider == "anthropic":
-            data = _call_anthropic(prompt, settings)
-        else:  # pragma: no cover - guarded by has_analyzer
-            return _fallback_analysis(articles)
+        data = _call_provider(prompt, settings)
     except Exception as exc:
         # Log the full exception (safe: GitHub Actions masks any registered
         # secret value in log output). Never put str(exc) into the email

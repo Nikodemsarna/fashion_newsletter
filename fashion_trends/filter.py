@@ -1,4 +1,4 @@
-"""Filter aggregated articles down to recent, trend-signal fashion stories."""
+"""Filter aggregated articles down to recent, trend-signal marketing stories."""
 
 from __future__ import annotations
 
@@ -10,11 +10,11 @@ from .fetch import Article
 
 logger = logging.getLogger(__name__)
 
-# Keywords that mark a story as being about an emerging/shifting fashion
-# PHENOMENON rather than routine fashion-industry coverage (earnings, plain
-# product drops, etc.). Matched case-insensitively with word boundaries
-# against the title + summary. Keep this focused on trend-signal language so
-# the newsletter stays about trend-spotting, not general fashion news.
+# Keywords that mark a story as being about an emerging/shifting marketing
+# PHENOMENON rather than routine industry coverage (earnings, plain personnel
+# moves, etc.). Matched case-insensitively with word boundaries against the
+# title + summary. Keep this focused on trend-signal language so the
+# newsletter stays about trend-spotting, not general marketing news.
 TREND_KEYWORDS: tuple[str, ...] = (
     "trend",
     "trends",
@@ -22,48 +22,50 @@ TREND_KEYWORDS: tuple[str, ...] = (
     "microtrend",
     "micro-trend",
     "micro trend",
-    "aesthetic",
-    "revival",
-    "resurgence",
-    "comeback",
+    "campaign",
+    "rebrand",
+    "rebranding",
+    "backlash",
+    "controversy",
     "viral",
     "going viral",
-    "must-have",
-    "it bag",
-    "it-bag",
-    "it girl",
-    "it-girl",
-    "capsule collection",
-    "street style",
-    "streetwear",
-    "runway",
-    "catwalk",
-    "collab",
-    "collaboration",
+    "brand safety",
+    "de-influencing",
+    "deinfluencing",
+    "retail media",
+    "creator economy",
+    "creator-led",
+    "influencer marketing",
+    "greenwashing",
+    "brand activism",
+    "purpose-driven",
+    "attention economy",
+    "dark social",
+    "zero-party data",
+    "first-party data",
+    "cookieless",
+    "privacy-first",
+    "owned media",
+    "generative ai",
+    "ai-generated",
+    "ai advertising",
     "gen z",
     "tiktok",
-    "instagram",
-    "y2k",
-    "subculture",
-    "style tribe",
+    "short-form video",
+    "user-generated content",
+    "ugc",
+    "b2b marketing",
+    "nostalgia marketing",
+    "meme marketing",
+    "guerrilla marketing",
+    "nation branding",
+    "soft power",
     "zeitgeist",
     "cultural moment",
-    "style movement",
-    "quiet luxury",
-    "old money",
-    "core aesthetic",
-    "cottagecore",
-    "gorpcore",
-    "balletcore",
-    "normcore",
-    "blokecore",
-    "mob wife",
-    "coastal grandma",
-    "dopamine dressing",
-    "silhouette",
-    "resort wear",
-    "maximalism",
-    "minimalism",
+    "cannes lions",
+    "award-winning campaign",
+    "case study",
+    "effectiveness",
 )
 
 _KEYWORD_RE = re.compile(

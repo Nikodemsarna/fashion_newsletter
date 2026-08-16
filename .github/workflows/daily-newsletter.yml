@@ -1,6 +1,6 @@
-name: Daily Fashion Trend Newsletter
+name: Daily Marketing Trend Newsletter
 
-# Runs every morning and emails the fashion-trend-verification digest.
+# Runs every morning and emails the marketing-trend-verification digest.
 # Also runnable on demand (workflow_dispatch), with an optional dry run.
 on:
   schedule:

@@ -52,7 +52,7 @@ class Settings:
 
     # Delivery
     recipient: str = "nikodem.sarna@gmail.com"
-    sender: str = "Fashion Trend Watch <onboarding@resend.dev>"
+    sender: str = "Marketing Signals <onboarding@resend.dev>"
     resend_api_key: str = ""
     smtp_host: str = ""
     smtp_port: int = 587
@@ -93,7 +93,7 @@ class Settings:
         sender = os.environ.get("NEWSLETTER_FROM", "").strip()
         smtp_user = os.environ.get("SMTP_USER", "").strip()
         if not sender:
-            sender = smtp_user or "Fashion Trend Watch <onboarding@resend.dev>"
+            sender = smtp_user or "Marketing Signals <onboarding@resend.dev>"
 
         return cls(
             provider=provider,

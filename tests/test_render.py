@@ -10,24 +10,24 @@ NOW = datetime(2026, 6, 30, 12, 0, tzinfo=timezone.utc)
 
 def make_dossier(**overrides):
     base = dict(
-        working_name="Quiet Luxury",
-        silhouette="Oversized, nieskonstruowane",
-        proportions="Wydłużone",
-        color="Stonowana neutralna paleta",
-        material="Kaszmir, wełna",
-        detail="Brak logo",
-        styling="Minimalistyczne warstwowanie",
-        earliest_occurrences="Sezon jesień/zima 2022 na pokazach mediolańskich",
-        designers=["The Row", "Loro Piana"],
-        celebrities=["Gwyneth Paltrow"],
-        subcultures=["Old money"],
-        platforms=["TikTok", "Instagram"],
-        cultural_context="Reakcja na inflację i widoczną konsumpcję",
+        working_name="Retail Media",
+        mechanic="Reklama celowana na danych transakcyjnych",
+        channel="Retail media network",
+        tone="Rzeczowy, wynikowy",
+        target_audience="Kupujący w sieciach handlowych",
+        creative_hook="Dane o realnych zakupach ponad deklaracjami",
+        measurement_signal="Wzrost wydatków na retail media r/r",
+        earliest_occurrences="Pierwsze sieci uruchamiają jednostki reklamowe w 2023",
+        brands=["Duża sieć handlowa", "Marka FMCG"],
+        agencies=["Wyspecjalizowany dom mediowy"],
+        voices=["Analityk eMarketer"],
+        platforms=["Retail media network", "Programmatic"],
+        cultural_context="Presja na mierzalny zwrot z wydatków reklamowych",
         stage="mainstream",
-        confirming_evidence=[Evidence(text="Wzrost sprzedaży The Row", source_indices=[0])],
-        contradicting_evidence="Część domów mody wraca do maksymalizmu",
-        predicted_horizon="Utrzyma się przez 2-3 kolejne sezony",
-        marketing_implication="Ograniczyć logotypy w nowej kolekcji",
+        confirming_evidence=[Evidence(text="Wzrost wydatków na retail media", source_indices=[0])],
+        contradicting_evidence="Fragmentacja narzędzi pomiarowych między sieciami",
+        predicted_horizon="Utrzyma się przez kolejne 2-3 lata",
+        business_implication="Budować kompetencje analityczne wewnątrz zespołu marketingu",
         confidence=4,
         verified=True,
     )
@@ -38,10 +38,10 @@ def make_dossier(**overrides):
 def test_render_edition_smoke():
     articles = [
         Article(
-            title="The Row sales climb as quiet luxury holds",
+            title="Retail media budgets climb as networks scale",
             link="https://example.com/1",
-            source="Vogue Business",
-            summary="Sales data shows continued demand for understated luxury.",
+            source="Marketing Week",
+            summary="Spend data shows continued demand for retail media.",
             published=NOW,
         ),
     ]
@@ -55,12 +55,12 @@ def test_render_edition_smoke():
     assert edition.count == 1
     assert "2026-06-30" in edition.subject
     assert len(edition.trends) == 1
-    assert "Quiet Luxury" in edition.html
+    assert "Retail Media" in edition.html
     assert "https://example.com/1" in edition.html
     assert "Mainstream" in edition.html
     assert "Dowody przeczące" in edition.html or "dowody przeczące" in edition.html.lower()
     # Plain-text alternative is populated.
-    assert "Quiet Luxury" in edition.text
+    assert "Retail Media" in edition.text
     assert "Dowody potwierdzające" in edition.text
 
 
@@ -77,7 +77,7 @@ def test_render_marks_unverified_dossier():
         Article(
             title="Some trend-adjacent story",
             link="https://example.com/2",
-            source="Highsnobiety",
+            source="Digiday",
             summary="",
             published=NOW,
         ),

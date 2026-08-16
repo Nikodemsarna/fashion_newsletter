@@ -1,5 +1,8 @@
 from datetime import datetime, timezone
 
+import requests
+
+from fashion_trends import analyze as analyze_module
 from fashion_trends.analyze import (
     Settings,
     _fallback_analysis,
@@ -21,21 +24,21 @@ def make_article(title, summary="", source="Src", link=None):
     )
 
 
-def test_fallback_groups_named_aesthetics_and_marks_unverified():
+def test_fallback_groups_named_phenomena_and_marks_unverified():
     articles = [
-        make_article("Cottagecore looks return to the runway"),
-        make_article("Another cottagecore moment on TikTok"),
+        make_article("Brand safety debate returns to the agenda"),
+        make_article("Another brand safety moment on LinkedIn"),
         make_article("Unrelated trend-adjacent story"),
     ]
     analysis = _fallback_analysis(articles)
     names = [t.working_name for t in analysis.trends]
-    assert "Cottagecore" in names
+    assert "Brand Safety" in names
     assert all(not t.verified for t in analysis.trends)
     assert all(t.confidence == 1 for t in analysis.trends)
 
 
 def test_analyze_uses_fallback_without_api_key():
-    articles = [make_article("Cottagecore looks return to the runway")]
+    articles = [make_article("Retail media keeps growing its ad budget share")]
     settings = Settings()  # no keys set
     analysis = analyze(articles, settings)
     assert analysis.trends
@@ -48,16 +51,16 @@ def test_payload_to_analysis_clamps_confidence_and_filters_bad_indices():
         "trends": [
             {
                 "working_name": "Test Trend",
-                "silhouette": "s",
-                "proportions": "p",
-                "color": "c",
-                "material": "m",
-                "detail": "d",
-                "styling": "st",
+                "mechanic": "m",
+                "channel": "c",
+                "tone": "t",
+                "target_audience": "a",
+                "creative_hook": "h",
+                "measurement_signal": "ms",
                 "earliest_occurrences": "e",
-                "designers": ["Designer A"],
-                "celebrities": [],
-                "subcultures": [],
+                "brands": ["Brand A"],
+                "agencies": [],
+                "voices": [],
                 "platforms": [],
                 "cultural_context": "ctx",
                 "stage": "growth",
@@ -66,7 +69,7 @@ def test_payload_to_analysis_clamps_confidence_and_filters_bad_indices():
                 ],
                 "contradicting_evidence": "none found",
                 "predicted_horizon": "soon",
-                "marketing_implication": "act now",
+                "business_implication": "act now",
                 "confidence": 9,  # out of range, should clamp to 5
             },
             {"working_name": "", "stage": "growth"},  # missing name -> dropped
@@ -78,3 +81,68 @@ def test_payload_to_analysis_clamps_confidence_and_filters_bad_indices():
     assert t.confidence == 5
     assert t.confirming_evidence[0].source_indices == [0]
     assert t.stage == "growth"
+
+
+def _http_error(status_code: int) -> requests.HTTPError:
+    response = requests.Response()
+    response.status_code = status_code
+    return requests.HTTPError(response=response)
+
+
+def test_analyze_retries_transient_error_then_succeeds(monkeypatch):
+    monkeypatch.setattr(analyze_module.time, "sleep", lambda _seconds: None)
+
+    calls = {"n": 0}
+
+    def flaky_gemini(prompt, settings):
+        calls["n"] += 1
+        if calls["n"] < 2:
+            raise _http_error(503)
+        return {"intro": "ok", "trends": []}
+
+    monkeypatch.setattr(analyze_module, "_call_gemini", flaky_gemini)
+
+    settings = Settings(provider="gemini", gemini_api_key="x")
+    articles = [make_article("Some trend story")]
+    result = analyze(articles, settings)
+
+    assert calls["n"] == 2
+    assert result.intro == "ok"
+
+
+def test_analyze_gives_up_after_max_attempts_on_repeated_503(monkeypatch):
+    monkeypatch.setattr(analyze_module.time, "sleep", lambda _seconds: None)
+
+    calls = {"n": 0}
+
+    def always_503(prompt, settings):
+        calls["n"] += 1
+        raise _http_error(503)
+
+    monkeypatch.setattr(analyze_module, "_call_gemini", always_503)
+
+    settings = Settings(provider="gemini", gemini_api_key="x")
+    articles = [make_article("Some trend story")]
+    result = analyze(articles, settings)
+
+    assert calls["n"] == analyze_module._MAX_ATTEMPTS
+    assert not result.trends[0].verified
+
+
+def test_analyze_does_not_retry_auth_error(monkeypatch):
+    monkeypatch.setattr(analyze_module.time, "sleep", lambda _seconds: None)
+
+    calls = {"n": 0}
+
+    def failing_gemini(prompt, settings):
+        calls["n"] += 1
+        raise _http_error(401)
+
+    monkeypatch.setattr(analyze_module, "_call_gemini", failing_gemini)
+
+    settings = Settings(provider="gemini", gemini_api_key="x")
+    articles = [make_article("Some trend story")]
+    result = analyze(articles, settings)
+
+    assert calls["n"] == 1
+    assert "błąd autoryzacji" in result.intro

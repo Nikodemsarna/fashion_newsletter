@@ -30,16 +30,16 @@ class RenderedEvidence:
 @dataclass
 class RenderedTrend:
     working_name: str
-    silhouette: str
-    proportions: str
-    color: str
-    material: str
-    detail: str
-    styling: str
+    mechanic: str
+    channel: str
+    tone: str
+    target_audience: str
+    creative_hook: str
+    measurement_signal: str
     earliest_occurrences: str
-    designers: list[str]
-    celebrities: list[str]
-    subcultures: list[str]
+    brands: list[str]
+    agencies: list[str]
+    voices: list[str]
     platforms: list[str]
     cultural_context: str
     stage: str
@@ -48,7 +48,7 @@ class RenderedTrend:
     confirming_evidence: list[RenderedEvidence]
     contradicting_evidence: str
     predicted_horizon: str
-    marketing_implication: str
+    business_implication: str
     confidence: int
     confidence_dots: str
     verified: bool
@@ -91,16 +91,16 @@ def _to_rendered_trend(dossier: TrendDossier, articles: list[Article]) -> Render
 
     return RenderedTrend(
         working_name=dossier.working_name,
-        silhouette=dossier.silhouette,
-        proportions=dossier.proportions,
-        color=dossier.color,
-        material=dossier.material,
-        detail=dossier.detail,
-        styling=dossier.styling,
+        mechanic=dossier.mechanic,
+        channel=dossier.channel,
+        tone=dossier.tone,
+        target_audience=dossier.target_audience,
+        creative_hook=dossier.creative_hook,
+        measurement_signal=dossier.measurement_signal,
         earliest_occurrences=dossier.earliest_occurrences,
-        designers=dossier.designers,
-        celebrities=dossier.celebrities,
-        subcultures=dossier.subcultures,
+        brands=dossier.brands,
+        agencies=dossier.agencies,
+        voices=dossier.voices,
         platforms=dossier.platforms,
         cultural_context=dossier.cultural_context,
         stage=dossier.stage,
@@ -109,7 +109,7 @@ def _to_rendered_trend(dossier: TrendDossier, articles: list[Article]) -> Render
         confirming_evidence=evidence,
         contradicting_evidence=dossier.contradicting_evidence,
         predicted_horizon=dossier.predicted_horizon,
-        marketing_implication=dossier.marketing_implication,
+        business_implication=dossier.business_implication,
         confidence=dossier.confidence,
         confidence_dots=_confidence_dots(dossier.confidence),
         verified=dossier.verified,
@@ -127,7 +127,7 @@ def render_edition(
     today: date = now.date()
     date_label = today.strftime("%A, %d %B %Y")
     count = len(analysis.trends)
-    subject = f"Fashion Trend Watch — {today.isoformat()}: {count} " + (
+    subject = f"Marketing Signals — {today.isoformat()}: {count} " + (
         "zjawisko" if count == 1 else "zjawisk trendowych"
     )
 
@@ -158,7 +158,7 @@ def render_edition(
 
 
 def _render_text(date_label: str, intro: str, trends: list[RenderedTrend]) -> str:
-    lines = ["FASHION TREND WATCH", date_label, "=" * 40, ""]
+    lines = ["MARKETING SIGNALS", date_label, "=" * 40, ""]
     if intro:
         lines += [intro, ""]
 
@@ -166,18 +166,18 @@ def _render_text(date_label: str, intro: str, trends: list[RenderedTrend]) -> st
         lines.append(f"# {t.working_name}  [{t.stage_label} · pewność {t.confidence}/5]")
         lines.append("-" * 40)
         lines.append(
-            f"Cechy: sylwetka: {t.silhouette}; proporcje: {t.proportions}; "
-            f"kolor: {t.color}; materiał: {t.material}; detal: {t.detail}; "
-            f"stylizacja: {t.styling}"
+            f"Cechy: mechanika: {t.mechanic}; kanał: {t.channel}; "
+            f"ton: {t.tone}; grupa docelowa: {t.target_audience}; "
+            f"insight: {t.creative_hook}; mierzalność: {t.measurement_signal}"
         )
         lines.append(f"Najwcześniejsze wystąpienia: {t.earliest_occurrences}")
         signal = []
-        if t.designers:
-            signal.append("projektanci: " + ", ".join(t.designers))
-        if t.celebrities:
-            signal.append("celebryci: " + ", ".join(t.celebrities))
-        if t.subcultures:
-            signal.append("subkultury: " + ", ".join(t.subcultures))
+        if t.brands:
+            signal.append("marki: " + ", ".join(t.brands))
+        if t.agencies:
+            signal.append("agencje: " + ", ".join(t.agencies))
+        if t.voices:
+            signal.append("głosy branżowe: " + ", ".join(t.voices))
         if t.platforms:
             signal.append("platformy: " + ", ".join(t.platforms))
         if signal:
@@ -190,11 +190,11 @@ def _render_text(date_label: str, intro: str, trends: list[RenderedTrend]) -> st
                 lines.append(f"    - {label}: {url}")
         lines.append(f"Dowody przeczące: {t.contradicting_evidence}")
         lines.append(f"Przewidywany horyzont: {t.predicted_horizon}")
-        lines.append(f"Konsekwencja marketingowa: {t.marketing_implication}")
+        lines.append(f"Konsekwencja biznesowa: {t.business_implication}")
         if not t.verified:
             lines.append("(!) NIEZWERYFIKOWANE — brak klucza API dla analizy LLM")
         lines.append("")
 
     lines.append("—")
-    lines.append("Fashion Trend Watch · codzienny przegląd zjawisk trendowych w modzie")
+    lines.append("Marketing Signals · codzienny przegląd zjawisk trendowych w marketingu")
     return "\n".join(lines)

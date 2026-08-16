@@ -1,22 +1,23 @@
-# 👗 Fashion Trend Watch
+# 📡 Marketing Signals
 
-A daily email newsletter that aggregates news from across the fashion and
-style press, filters it down to **trend-signal stories** (viral aesthetics,
-runway shifts, street-style movements, revivals, micro-trends), and uses an
-LLM to identify the distinct trend **phenomena** behind them — then builds a
-verification dossier for each one before emailing a clean digest.
+A daily email newsletter that aggregates news from across the marketing and
+advertising trade press, filters it down to **trend-signal stories**
+(campaigns, platform shifts, brand-strategy moves, market data, critical
+voices), and uses an LLM to identify the distinct trend **phenomena** behind
+them — then builds a verification dossier for each one before emailing a
+clean digest.
 
 Built to run unattended on **GitHub Actions** — one scheduled job per day.
 Same pipeline shape as its sibling project,
 [Small-Sat News](https://github.com/Nikodemsarna/Small-Sat-news), adapted for
-fashion-trend verification instead of article summarization.
+marketing-trend verification instead of article summarization.
 
 ---
 
 ## How it works
 
 ```
-config/feeds.yaml          (fashion-press portals with an RSS feed)
+config/feeds.yaml          (marketing-trade portals with an RSS feed)
         │
         ▼
  fetch    → pulls & parses all feeds concurrently (resilient to dead feeds)
@@ -40,15 +41,15 @@ day, so running costs are negligible.
 
 Unlike a plain news digest, this newsletter does not summarize articles one
 by one — it asks the LLM to spot the trend **phenomenon** underlying a
-cluster of related stories (plus its own broader fashion-history knowledge)
+cluster of related stories (plus its own broader marketing-history knowledge)
 and verify it against a fixed 11-point checklist, for every trend in every
 edition:
 
 1. **Nazwa robocza zjawiska** — working name of the phenomenon
-2. **Widoczne cechy** — sylwetka, proporcje, kolor, materiał, detal, sposób
-   stylizacji
+2. **Widoczne cechy** — mechanika/format, kanał, ton, grupa docelowa, insight
+   kreatywny, sygnał mierzalności
 3. **Najwcześniejsze znane wystąpienia**
-4. **Nośniki sygnału** — projektanci, celebryci, subkultury, platformy
+4. **Nośniki sygnału** — marki, agencje, głosy branżowe, platformy
 5. **Kontekst kulturowy, polityczny lub ekonomiczny**
 6. **Etap rozwoju** — sygnał → trend wschodzący → wzrost → mainstream →
    nasycenie → schyłek
@@ -56,11 +57,11 @@ edition:
    applicable
 8. **Dowody przeczące** — a mandatory, actively-sought counter-argument field
 9. **Przewidywany horyzont**
-10. **Możliwa konsekwencja marketingowa**
+10. **Możliwa konsekwencja biznesowa**
 11. **Poziom pewności (1–5)**
 
 If no LLM key is configured, the newsletter still sends but is explicit about
-it: stories are grouped by a known aesthetic keyword only, every dossier
+it: stories are grouped by a known phenomenon keyword only, every dossier
 field is marked as unverified, and confidence is pinned to 1/5.
 
 ---
@@ -96,7 +97,7 @@ All configuration is via environment variables — see
 | `NEWSLETTER_TO` | Recipient address | `nikodem.sarna@gmail.com` |
 | `RESEND_API_KEY` | Use Resend for delivery | — |
 | `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASSWORD` | Use SMTP for delivery | — |
-| `NEWSLETTER_FROM` | From address | `Fashion Trend Watch <onboarding@resend.dev>` |
+| `NEWSLETTER_FROM` | From address | `Marketing Signals <onboarding@resend.dev>` |
 | `FASHION_MODEL` | Override model | _(provider default)_ |
 | `FASHION_EFFORT` | Anthropic reasoning effort | `high` |
 | `FASHION_WINDOW_HOURS` | How far back "recent" reaches | `72` |

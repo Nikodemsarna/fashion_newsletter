@@ -31,9 +31,9 @@ def _sample_articles(now: datetime) -> list[Article]:
     """Placeholder stories so a test edition always has content to send."""
     return [
         Article(
-            title="Test edition — your Fashion Trend Watch delivery is working",
+            title="Test edition — your Marketing Signals delivery is working",
             link="https://github.com/Nikodemsarna/fashion_newsletter",
-            source="Fashion Trend Watch (sample)",
+            source="Marketing Signals (sample)",
             summary=(
                 "This is a sample story. If you're reading it in your inbox, "
                 "email delivery is configured correctly. Real editions replace "
@@ -42,9 +42,9 @@ def _sample_articles(now: datetime) -> list[Article]:
             published=now,
         ),
         Article(
-            title="Sample: quiet luxury aesthetic keeps gaining runway traction",
+            title="Sample: retail media keeps gaining ad-budget share",
             link="https://github.com/Nikodemsarna/fashion_newsletter",
-            source="Fashion Trend Watch (sample)",
+            source="Marketing Signals (sample)",
             summary=(
                 "A second sample item so you can preview the layout and "
                 "trend-dossier formatting of a normal edition."
@@ -59,24 +59,24 @@ def _sample_analysis(now: datetime) -> EditionAnalysis:
         intro="To jest wydanie testowe — poniżej przykładowy fenomen trendowy.",
         trends=[
             TrendDossier(
-                working_name="Sample: Quiet Luxury",
-                silhouette="Przykład — dane testowe",
-                proportions="Przykład — dane testowe",
-                color="Przykład — dane testowe",
-                material="Przykład — dane testowe",
-                detail="Przykład — dane testowe",
-                styling="Przykład — dane testowe",
+                working_name="Sample: Retail Media",
+                mechanic="Przykład — dane testowe",
+                channel="Przykład — dane testowe",
+                tone="Przykład — dane testowe",
+                target_audience="Przykład — dane testowe",
+                creative_hook="Przykład — dane testowe",
+                measurement_signal="Przykład — dane testowe",
                 earliest_occurrences="Przykład — dane testowe",
-                designers=["Sample Designer"],
-                celebrities=["Sample Celebrity"],
-                subcultures=["Sample Subculture"],
+                brands=["Sample Brand"],
+                agencies=["Sample Agency"],
+                voices=["Sample Voice"],
                 platforms=["Sample Platform"],
                 cultural_context="Przykład — dane testowe",
                 stage="growth",
                 confirming_evidence=[Evidence(text="Przykładowy dowód", source_indices=[0])],
                 contradicting_evidence="Przykład — dane testowe",
                 predicted_horizon="Przykład — dane testowe",
-                marketing_implication="Przykład — dane testowe",
+                business_implication="Przykład — dane testowe",
                 confidence=3,
                 verified=True,
             )
