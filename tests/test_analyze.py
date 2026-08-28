@@ -146,3 +146,54 @@ def test_analyze_does_not_retry_auth_error(monkeypatch):
 
     assert calls["n"] == 1
     assert "błąd autoryzacji" in result.intro
+
+
+def test_analyze_falls_over_to_secondary_provider_after_primary_exhausted(monkeypatch):
+    monkeypatch.setattr(analyze_module.time, "sleep", lambda _seconds: None)
+
+    gemini_calls = {"n": 0}
+    groq_calls = {"n": 0}
+
+    def always_503_gemini(prompt, settings):
+        gemini_calls["n"] += 1
+        raise _http_error(503)
+
+    def working_groq(prompt, settings):
+        groq_calls["n"] += 1
+        return {"intro": "from groq", "trends": []}
+
+    monkeypatch.setattr(analyze_module, "_call_gemini", always_503_gemini)
+    monkeypatch.setattr(analyze_module, "_call_groq", working_groq)
+
+    settings = Settings(provider="gemini", gemini_api_key="x", groq_api_key="g")
+    articles = [make_article("Some trend story")]
+    result = analyze(articles, settings)
+
+    assert gemini_calls["n"] == analyze_module._MAX_ATTEMPTS
+    assert groq_calls["n"] == 1
+    assert result.intro == "from groq"
+
+
+def test_analyze_skips_fallback_provider_when_model_is_forced(monkeypatch):
+    monkeypatch.setattr(analyze_module.time, "sleep", lambda _seconds: None)
+
+    groq_calls = {"n": 0}
+
+    def always_503_gemini(prompt, settings):
+        raise _http_error(503)
+
+    def working_groq(prompt, settings):
+        groq_calls["n"] += 1
+        return {"intro": "from groq", "trends": []}
+
+    monkeypatch.setattr(analyze_module, "_call_gemini", always_503_gemini)
+    monkeypatch.setattr(analyze_module, "_call_groq", working_groq)
+
+    settings = Settings(
+        provider="gemini", gemini_api_key="x", groq_api_key="g", model="a-forced-model"
+    )
+    articles = [make_article("Some trend story")]
+    result = analyze(articles, settings)
+
+    assert groq_calls["n"] == 0
+    assert not result.trends[0].verified

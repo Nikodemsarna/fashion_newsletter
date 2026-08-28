@@ -27,7 +27,7 @@ def test_gemini_autodetected(monkeypatch):
     s = Settings.from_env()
     assert s.provider == "gemini"
     assert s.has_analyzer is True
-    assert s.resolved_model == "gemini-flash-latest"
+    assert s.resolved_model == "gemini-2.5-flash"
     assert s.api_key == "x"
 
 
@@ -61,3 +61,17 @@ def test_google_api_key_alias(monkeypatch):
     s = Settings.from_env()
     assert s.provider == "gemini"
     assert s.has_analyzer is True
+
+
+def test_available_providers_lists_primary_first_then_others_with_keys(monkeypatch):
+    monkeypatch.setenv("GEMINI_API_KEY", "x")
+    monkeypatch.setenv("GROQ_API_KEY", "g")
+    s = Settings.from_env()
+    assert s.provider == "gemini"
+    assert s.available_providers == ["gemini", "groq"]
+
+
+def test_available_providers_only_lists_configured_keys(monkeypatch):
+    monkeypatch.setenv("GEMINI_API_KEY", "x")
+    s = Settings.from_env()
+    assert s.available_providers == ["gemini"]

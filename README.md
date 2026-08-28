@@ -106,17 +106,34 @@ All configuration is via environment variables — see
 
 ### Analysis: pick a provider (free options)
 
-The provider is auto-detected from whichever key you set:
+The primary provider is auto-detected from whichever key you set:
 
 - **Google Gemini** (recommended, free): grab a key — no credit card — at
   [aistudio.google.com/apikey](https://aistudio.google.com/apikey) and set
-  `GEMINI_API_KEY`. Default model `gemini-flash-latest` (a Google-maintained
-  alias that always points at the current GA Flash model, so it doesn't need
-  updating when Google retires/renames dated model versions).
+  `GEMINI_API_KEY`. Default model `gemini-2.5-flash`, pinned to a specific GA
+  release rather than the `-latest` alias — `-latest` sounds convenient, but
+  it means every free-tier user gets routed to whatever Google just shipped,
+  which is exactly when it's most likely to be capacity-constrained (we saw
+  5+ straight days of 100% `503`/timeout failures on `gemini-flash-latest`
+  right after a model rollout). Bump this by hand if the pinned model is
+  ever retired.
 - **Groq** (free, fast): key at [console.groq.com/keys](https://console.groq.com/keys),
   set `GROQ_API_KEY`. Default model `llama-3.3-70b-versatile`.
 - **Anthropic / Claude** (paid): set `ANTHROPIC_API_KEY` and
   `pip install anthropic`. Default model `claude-opus-4-8`.
+
+**Set more than one key and you get automatic failover**: if the primary
+provider exhausts its retries (see below), the next provider with a
+configured key is tried before the edition degrades to the unverified
+fallback. This is what actually protects against a days-long single-provider
+outage — per-provider retries alone can't. Recommended: set both
+`GEMINI_API_KEY` and `GROQ_API_KEY` (both free) so a bad day for one doesn't
+mean an unverified edition. Failover is skipped if `FASHION_MODEL` forces a
+specific model, since that model name may not exist on the fallback provider.
+
+Each provider call also retries transient failures (`503`, `429`, timeouts)
+up to 3 times with a short delay before moving to the next provider or, if
+none are left, to the unverified fallback.
 
 Gemini and Groq run over plain HTTP — no extra Python dependency. With no key
 at all, the edition still sends but every dossier is marked unverified.

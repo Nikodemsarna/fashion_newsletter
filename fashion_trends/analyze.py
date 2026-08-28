@@ -21,8 +21,11 @@ answer a fixed set of trend-verification criteria:
   11. confidence             - poziom pewności 1-5
 
 Supported providers (auto-detected from whichever API key is set, or forced
-via ``FASHION_PROVIDER``): gemini, groq, anthropic. Without any key, a
-lightweight, explicitly-unverified fallback grouping is produced instead.
+via ``FASHION_PROVIDER``): gemini, groq, anthropic. If more than one key is
+configured, a provider that exhausts its retries fails over to the next one
+automatically (see ``Settings.available_providers``). Without any key — or
+once every configured provider has failed — a lightweight, explicitly-
+unverified fallback grouping is produced instead.
 """
 
 from __future__ import annotations
@@ -31,7 +34,7 @@ import json
 import logging
 import re
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 import requests
 
@@ -503,39 +506,66 @@ def _call_provider(prompt: str, settings: Settings) -> dict:
 
 
 def analyze(articles: list[Article], settings: Settings) -> EditionAnalysis:
-    """Produce an EditionAnalysis using the configured provider."""
+    """Produce an EditionAnalysis, trying every configured provider in turn.
+
+    Each provider gets its own retry-with-backoff (see `_call_provider`). If
+    a provider exhausts its retries, the next one with a configured key is
+    tried before giving up — this is what actually protects against a
+    days-long outage on a single provider (e.g. a newly-released model still
+    overloaded on the free tier), which per-provider retries alone cannot
+    fix. Skipped when `FASHION_MODEL` forces a specific model, since that
+    model name may not exist on a fallback provider.
+    """
     if not articles:
         return EditionAnalysis(intro="", trends=[])
 
-    if not settings.has_analyzer:
+    providers = settings.available_providers if not settings.model else (
+        [settings.provider] if settings.has_analyzer else []
+    )
+    if not providers:
         logger.warning(
             "No LLM API key set — using unverified raw-signal grouping fallback."
         )
         return _fallback_analysis(articles)
 
     prompt = _build_user_prompt(articles)
-    try:
-        data = _call_provider(prompt, settings)
-    except Exception as exc:
-        # Log the full exception (safe: GitHub Actions masks any registered
-        # secret value in log output). Never put str(exc) into the email
-        # itself — for HTTP errors it can include the request URL with the
-        # API key as a query parameter, which is NOT masked in email content.
-        logger.error(
-            "Trend analysis via %s failed (%s) — falling back.", settings.provider, exc
-        )
-        failure_note = _safe_failure_note(exc)
-        return _fallback_analysis(articles, provider=settings.provider, failure_note=failure_note)
+    last_exc: Exception = RuntimeError("no provider attempted")
+    last_provider = providers[0]
 
-    analysis = _payload_to_analysis(data, len(articles), settings.max_trends)
-    logger.info(
-        "Identified %d trend dossiers from %d articles with %s (%s).",
-        len(analysis.trends),
-        len(articles),
-        settings.provider,
-        settings.resolved_model,
+    for provider in providers:
+        provider_settings = replace(settings, provider=provider)
+        try:
+            data = _call_provider(prompt, provider_settings)
+        except Exception as exc:
+            # Log the full exception (safe: GitHub Actions masks any
+            # registered secret value in log output). Never put str(exc)
+            # into the email itself — for HTTP errors it can include the
+            # request URL with the API key as a query parameter, which is
+            # NOT masked in email content.
+            last_exc = exc
+            last_provider = provider
+            logger.warning(
+                "Provider %s exhausted its retries (%s) — trying next provider.",
+                provider,
+                exc,
+            )
+            continue
+
+        analysis = _payload_to_analysis(data, len(articles), settings.max_trends)
+        logger.info(
+            "Identified %d trend dossiers from %d articles with %s (%s).",
+            len(analysis.trends),
+            len(articles),
+            provider,
+            provider_settings.resolved_model,
+        )
+        return analysis
+
+    logger.error(
+        "Trend analysis via %s failed (%s) — falling back.", last_provider, last_exc
     )
-    return analysis
+    failure_note = _safe_failure_note(last_exc)
+    return _fallback_analysis(articles, provider=last_provider, failure_note=failure_note)
 
 
 # --- Providers --------------------------------------------------------------

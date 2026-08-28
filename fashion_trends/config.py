@@ -12,13 +12,22 @@ DEFAULT_TEMPLATE_DIR = REPO_ROOT / "templates"
 
 # Default model per LLM provider.
 PROVIDER_DEFAULT_MODELS = {
-    # "-latest" is a Google-maintained alias that always points at the current
-    # GA Flash model, hot-swapped by Google on each release — this avoids
-    # having to chase model retirements/renames by hand every few months.
-    "gemini": "gemini-flash-latest",
+    # Pinned to a specific GA release rather than the "-latest" alias.
+    # "-latest" sounds appealing (no manual bumps when Google retires a model)
+    # but in practice it means every free-tier user gets pointed at whatever
+    # Google just shipped, which is exactly when it's most capacity-constrained
+    # — we saw >5 consecutive days of 100% 503/timeout failures on
+    # gemini-flash-latest right after a model rollout. A pinned GA model is a
+    # known quantity; bump this by hand if/when it gets retired.
+    "gemini": "gemini-2.5-flash",
     "groq": "llama-3.3-70b-versatile",
     "anthropic": "claude-opus-4-8",
 }
+
+# Fallback order when the primary provider fails after all retries: if a key
+# for the next provider in this list is also configured, it's tried before
+# giving up and falling back to the unverified grouping. Free providers first.
+_PROVIDER_FALLBACK_ORDER = ("gemini", "groq", "anthropic")
 
 
 def _env_int(name: str, default: int) -> int:
@@ -124,6 +133,23 @@ class Settings:
             "groq": self.groq_api_key,
             "anthropic": self.anthropic_api_key,
         }.get(self.provider, "")
+
+    @property
+    def available_providers(self) -> list[str]:
+        """Providers with a configured key, primary provider first.
+
+        Used to fail over to a second free provider if the primary one is
+        down for an extended period (e.g. a newly-released model still
+        overloaded on the free tier) rather than degrading to the unverified
+        fallback every single day.
+        """
+        keys = {
+            "gemini": self.gemini_api_key,
+            "groq": self.groq_api_key,
+            "anthropic": self.anthropic_api_key,
+        }
+        ordered = [self.provider] + [p for p in _PROVIDER_FALLBACK_ORDER if p != self.provider]
+        return [p for p in ordered if keys.get(p)]
 
     @property
     def has_analyzer(self) -> bool:
