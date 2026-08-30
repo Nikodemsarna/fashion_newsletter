@@ -12,14 +12,17 @@ DEFAULT_TEMPLATE_DIR = REPO_ROOT / "templates"
 
 # Default model per LLM provider.
 PROVIDER_DEFAULT_MODELS = {
-    # Pinned to a specific GA release rather than the "-latest" alias.
-    # "-latest" sounds appealing (no manual bumps when Google retires a model)
-    # but in practice it means every free-tier user gets pointed at whatever
-    # Google just shipped, which is exactly when it's most capacity-constrained
-    # — we saw >5 consecutive days of 100% 503/timeout failures on
-    # gemini-flash-latest right after a model rollout. A pinned GA model is a
-    # known quantity; bump this by hand if/when it gets retired.
-    "gemini": "gemini-2.5-flash",
+    # Back on the "-latest" alias. A pinned dot-release (gemini-2.5-flash)
+    # was tried here briefly and immediately started 404ing — "not found for
+    # API version v1beta" — because it's no longer a valid model on this
+    # account/API version; Google's model lineup moves faster than this file
+    # gets updated by hand, and a wrong pin is a *permanent* failure (every
+    # call 404s) whereas the alias's failure mode (occasional overload right
+    # after Google repoints it at a new model) is transient and exactly what
+    # the retry + cross-provider failover below are for. If you want a
+    # pinned model, verify it first with the ListModels endpoint against
+    # your own key: https://ai.google.dev/api/models
+    "gemini": "gemini-flash-latest",
     "groq": "llama-3.3-70b-versatile",
     "anthropic": "claude-opus-4-8",
 }
