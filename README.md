@@ -121,7 +121,11 @@ The primary provider is auto-detected from whichever key you set:
 - **Groq** (free, fast): key at [console.groq.com/keys](https://console.groq.com/keys),
   set `GROQ_API_KEY`. Default model `openai/gpt-oss-120b` — Groq's
   recommended replacement for `llama-3.3-70b-versatile`, which it
-  deprecated on 2026-06-17 and now 404s on every call.
+  deprecated on 2026-06-17 and now 404s on every call. Its free tier also
+  caps this model at 8,000 tokens **per request** (prompt + completion
+  combined) — Groq's own requested completion size is kept well under
+  that (see `_GROQ_MAX_TOKENS` in `analyze.py`), since the shared
+  16,000-token default alone already blew the budget and 413'd every call.
 - **Anthropic / Claude** (paid): set `ANTHROPIC_API_KEY` and
   `pip install anthropic`. Default model `claude-opus-4-8`.
 

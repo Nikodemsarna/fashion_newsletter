@@ -46,6 +46,16 @@ logger = logging.getLogger(__name__)
 _TIMEOUT = 120
 _MAX_TOKENS = 16000
 
+# Groq's free tier caps openai/gpt-oss-120b at 8,000 tokens PER REQUEST
+# (prompt + completion combined) via its tokens-per-minute limit — not a
+# per-minute rolling budget, a hard per-call ceiling. Requesting the shared
+# _MAX_TOKENS (16000) as max_tokens already exceeds that on its own, before
+# a single article of prompt is counted, so every Groq call 413'd
+# ("Request too large") regardless of how small the day's article batch
+# was. Keep Groq's own request comfortably under 8,000 total so there's
+# still room for the prompt. https://console.groq.com/docs/rate-limits
+_GROQ_MAX_TOKENS = 4000
+
 # Transient-failure retry policy for provider calls: a 503 (overloaded model,
 # very common on Gemini's free tier), a 429, or a network hiccup usually
 # clears up within seconds, so it's worth a couple of retries before giving
@@ -609,7 +619,7 @@ def _call_groq(prompt: str, settings: Settings) -> dict:
             ],
             "response_format": {"type": "json_object"},
             "temperature": 0.3,
-            "max_tokens": _MAX_TOKENS,
+            "max_tokens": _GROQ_MAX_TOKENS,
         },
         timeout=_TIMEOUT,
     )
