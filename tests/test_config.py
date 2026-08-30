@@ -36,7 +36,7 @@ def test_free_provider_preferred_over_anthropic(monkeypatch):
     monkeypatch.setenv("ANTHROPIC_API_KEY", "a")
     s = Settings.from_env()
     assert s.provider == "groq"
-    assert s.resolved_model == "llama-3.3-70b-versatile"
+    assert s.resolved_model == "openai/gpt-oss-120b"
 
 
 def test_explicit_provider_override(monkeypatch):

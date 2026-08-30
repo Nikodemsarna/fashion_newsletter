@@ -119,7 +119,9 @@ The primary provider is auto-detected from whichever key you set:
   Google repoints it at a new model — is transient and exactly what the
   retry + cross-provider failover below are for.
 - **Groq** (free, fast): key at [console.groq.com/keys](https://console.groq.com/keys),
-  set `GROQ_API_KEY`. Default model `llama-3.3-70b-versatile`.
+  set `GROQ_API_KEY`. Default model `openai/gpt-oss-120b` — Groq's
+  recommended replacement for `llama-3.3-70b-versatile`, which it
+  deprecated on 2026-06-17 and now 404s on every call.
 - **Anthropic / Claude** (paid): set `ANTHROPIC_API_KEY` and
   `pip install anthropic`. Default model `claude-opus-4-8`.
 

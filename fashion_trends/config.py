@@ -23,7 +23,12 @@ PROVIDER_DEFAULT_MODELS = {
     # pinned model, verify it first with the ListModels endpoint against
     # your own key: https://ai.google.dev/api/models
     "gemini": "gemini-flash-latest",
-    "groq": "llama-3.3-70b-versatile",
+    # Groq deprecated llama-3.3-70b-versatile on 2026-06-17 (free/developer
+    # tier); every call now 404s. openai/gpt-oss-120b is Groq's own
+    # recommended replacement (console.groq.com/docs/deprecations). Same
+    # lesson as the Gemini pin above: verify against Groq's live model list
+    # (https://console.groq.com/docs/models) before changing this again.
+    "groq": "openai/gpt-oss-120b",
     "anthropic": "claude-opus-4-8",
 }
 
